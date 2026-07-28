@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Panda Renang BM Tahun 2 (Premium Edition)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@400;700&family=Poppins:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00a8ff;
+            --secondary: #fbc531;
+            --success: #4cd137;
+            --danger: #e84118;
+            --text-dark: #2f3640;
+            --glass-bg: rgba(255, 255, 255, 0.25);
+            --glass-border: rgba(255, 255, 255, 0.5);
+            --font-main: 'Fredoka', sans-serif;
+            --font-ui: 'Nunito', sans-serif;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background-color: #74b9ff; font-family: var(--font-main); color: white; }
+        #game-container { position: relative; width: 100%; height: 100%; }
+        canvas { display: block; width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
+        
+        .screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            background: rgba(0, 168, 255, 0.4); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            opacity: 0; pointer-events: none; transition: opacity 0.5s ease;
+        }
+        .screen.active { opacity: 1; pointer-events: all; }
+        #splash { background: #0097e6; z-index: 100; }
+        .logo-splash { font-size: 4rem; animation: bounce 2s infinite; }
+        
+        .glass-panel {
+            background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 20px;
+            padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center;
+            width: 90%; max-width: 450px; animation: slideUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        h1 { font-size: 2.5rem; color: #fff; text-shadow: 2px 2px 0 #0097e6, -1px -1px 0 #0097e6; margin-bottom: 5px; }
+        h2 { font-family: var(--font-ui); font-size: 1.2rem; margin-bottom: 20px; color: #fff200; }
+        
+        input, select {
+            width: 100%; padding: 15px; margin: 10px 0; border-radius: 12px; border: 2px solid rgba(255,255,255,0.8);
+            font-family: var(--font-ui); font-size: 1.1rem; background: rgba(255,255,255,0.9); color: var(--text-dark); outline: none; transition: 0.3s;
+        }
+        input:focus { border-color: var(--secondary); transform: scale(1.02); }
+        
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; width: 100%; padding: 15px;
+            margin: 8px 0; border-radius: 15px; border: none; font-family: var(--font-main); font-size: 1.3rem; font-weight: bold;
+            cursor: pointer; transition: all 0.2s; text-transform: uppercase; box-shadow: 0 6px 0 rgba(0,0,0,0.2);
+        }
+        .btn:active { transform: translateY(6px); box-shadow: none; }
+        .btn-primary { background: var(--secondary); color: var(--text-dark); }
+        .btn-primary:hover { background: #ffeaa7; }
+        .btn-secondary { background: rgba(255,255,255,0.9); color: var(--text-dark); }
+        .controls { display: flex; gap: 10px; margin-top: 15px; }
+        .controls .btn { width: auto; flex: 1; font-size: 1rem; padding: 10px; }
+        footer { position: absolute; bottom: 10px; font-size: 0.8rem; font-family: var(--font-ui); text-align: center; width: 100%; }
+
+        #hud {
+            position: absolute; top: 0; left: 0; width: 100%; padding: 15px; display: flex; justify-content: space-between;
+            align-items: flex-start; z-index: 5; pointer-events: none; opacity: 0; transition: 0.5s;
+        }
+        #hud.active { opacity: 1; }
+        .hud-box { background: rgba(0,0,0,0.4); backdrop-filter: blur(5px); padding: 10px 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); font-family: var(--font-ui); font-weight: bold; }
+        .lives { font-size: 1.5rem; color: #ff4757; }
+        .progress-bar { width: 100%; height: 8px; background: rgba(0,0,0,0.3); border-radius: 5px; margin-top: 5px; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--success); width: 0%; transition: width 0.3s; }
+
+        #question-ui { background: rgba(0,0,0,0.5); backdrop-filter: none; /* Let canvas show clearly behind */ }
+        .question-card {
+            background: rgba(255,255,255,0.95); color: var(--text-dark); border-radius: 20px; padding: 30px;
+            width: 90%; max-width: 600px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            transform: scale(0.8); transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: absolute; bottom: 5%; /* Moved down to show Panda's face */
+        }
+        .screen.active .question-card { transform: scale(1); }
+        .q-header { font-size: 1.2rem; color: #7f8fa6; margin-bottom: 10px; font-family: var(--font-ui); }
+        .q-text { font-size: 1.6rem; margin-bottom: 25px; line-height: 1.4; }
+        
+        .opt-btn {
+            width: 100%; padding: 12px; margin: 8px 0; border: 3px solid #dfe6e9; border-radius: 15px;
+            background: #fff; font-size: 1.2rem; font-family: var(--font-ui); font-weight: bold;
+            color: var(--text-dark); cursor: pointer; transition: 0.2s;
+        }
+        .opt-btn:hover { border-color: var(--primary); background: #f1f8ff; transform: scale(1.02); }
+        .opt-btn.correct { background: var(--success); color: white; border-color: var(--success); animation: pulse 0.5s; }
+        .opt-btn.wrong { background: var(--danger); color: white; border-color: var(--danger); animation: shake 0.5s; }
+
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-20px); } }
+        @keyframes slideUp { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; color: var(--text-dark); font-family: var(--font-ui); }
+        th, td { padding: 10px; border-bottom: 1px solid #ccc; text-align: left; }
+        th { background: #f1f2f6; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="hud">
+            <div class="hud-box">
+                <div>👨‍🎓 <span id="hud-name">Nama</span> | <span id="hud-class">Kelas</span></div>
+                <div style="font-size: 1.2rem; margin-top: 5px;">⭐ Skor: <span id="hud-score">0</span></div>
+            </div>
+            <div class="hud-box" style="text-align: right;">
+                <div class="lives" id="hud-lives">❤️❤️❤️❤️❤️</div>
+                <div>Soalan: <span id="hud-qnum">1</span> / 20</div>
+                <div class="progress-bar"><div class="progress-fill" id="hud-progress"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Splash Screen -->
+    <div id="splash" class="screen active">
+        <div class="logo-splash">🐼💦</div>
+        <h1>SWIMMING PANDA</h1>
+        <p style="font-family: var(--font-ui);">Memuatkan Premium Live2D Assets...</p>
+        <div class="progress-bar" style="width: 200px; margin-top: 20px;"><div class="progress-fill" id="splash-load" style="width: 0%;"></div></div>
+    </div>
+
+    <!-- Dashboard -->
+    <div id="dashboard" class="screen">
+        <div class="glass-panel">
+            <h1>🐼 PANDA RENANG</h1>
+            <h2>Bahasa Melayu Tahun 2</h2>
+            <input type="text" id="input-name" placeholder="Nama Murid" autocomplete="off">
+            <select id="input-class">
+                <option value="">Pilih Kelas</option>
+                <option value="2 Dedikasi">2 Dedikasi</option>
+                <option value="2 Cemerlang">2 Cemerlang</option>
+                <option value="2 Pintar">2 Pintar</option>
+                <option value="2 Bestari">2 Bestari</option>
+            </select>
+            <select id="input-diff">
+                <option value="mudah">Tahap: Mudah (Tiada Masa)</option>
+                <option value="sederhana">Tahap: Sederhana (30s)</option>
+                <option value="sukar">Tahap: Sukar (15s)</option>
+            </select>
+            <button class="btn btn-primary" onclick="startGame()">▶️ MULA</button>
+            <div class="controls">
+                <button class="btn btn-secondary" onclick="showScreen('tutorial')">📖 Cara</button>
+                <button class="btn btn-secondary" onclick="showRanking()">🏆 Ranking</button>
+                <button class="btn btn-secondary" id="btn-sound" onclick="toggleSound()">🔊 Audio</button>
+            </div>
+            <p style="color:#dff9fb; font-size:0.8rem; margin-top:10px;" id="save-notice"></p>
+        </div>
+        <footer>by Teacher Bakiya | Copyright © 2026</footer>
+    </div>
+
+    <!-- Tutorial & Ranking Screens -->
+    <div id="tutorial" class="screen">
+        <div class="glass-panel" style="color: var(--text-dark); background: rgba(255,255,255,0.9);">
+            <h2>📖 CARA BERMAIN</h2>
+            <p style="text-align: left; font-family: var(--font-ui); line-height: 1.6; margin-bottom: 20px;">
+                1. Panda akan berenang dan memandang anda.<br>
+                2. Jawab soalan Bahasa Melayu yang diberikan.<br>
+                3. Jawapan Betul = Panda gembira (+10 Markah).<br>
+                4. Jawapan Salah = Panda jatuh air, tolak 1 nyawa (❤️).<br>
+                5. Jawab 20 soalan untuk menjadi Juara!
+            </p>
+            <button class="btn btn-primary" onclick="showScreen('dashboard')">KEMBALI</button>
+        </div>
+    </div>
+    <div id="ranking" class="screen">
+        <div class="glass-panel" style="background: rgba(255,255,255,0.95); max-width: 500px;">
+            <h2 style="color: var(--primary);">🏆 KEDUDUKAN (TOP 5)</h2>
+            <div id="leaderboard-data" style="margin-bottom: 20px; overflow-x: auto;"></div>
+            <button class="btn btn-primary" onclick="showScreen('dashboard')">KEMBALI</button>
+        </div>
+    </div>
+
+    <!-- Question UI (Moved to Bottom for Cinematic View) -->
+    <div id="question-ui" class="screen">
+        <div class="question-card">
+            <div class="q-header" id="q-topic">Topik: Kata Nama</div>
+            <div class="q-text" id="q-text">Soalan loading...</div>
+            <div id="options-container"></div>
+            <div id="timer-bar" style="height: 5px; background: var(--danger); width: 100%; margin-top: 15px; border-radius: 5px; transition: width 1s linear;"></div>
+        </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="game-over" class="screen" style="background: rgba(0,0,0,0.85);">
+        <div class="glass-panel" style="background: transparent; border: none; box-shadow: none;">
+            <h1 style="color: #ff4757; font-size: 4rem;">GAME OVER</h1>
+            <p style="font-size: 1.2rem; margin-bottom: 20px;">Anda telah kehabisan nyawa. Cuba lagi!</p>
+            <button class="btn btn-primary" onclick="resetToMenu()">Main Semula</button>
+        </div>
+    </div>
+
+    <!-- Victory Screen -->
+    <div id="victory" class="screen" style="background: rgba(255, 234, 167, 0.9);">
+        <div class="glass-panel" style="color: var(--text-dark); background: white;">
+            <h1 style="color: #ff9f43; font-size: 3rem;">TAHNIAH! 🎉</h1>
+            <p style="font-family: var(--font-ui); font-size: 1.2rem; margin-bottom: 10px;">Anda Juara Bahasa Melayu!</p>
+            <div style="text-align: left; font-family: var(--font-ui); background: #f1f2f6; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                <p>👨‍🎓 Nama: <b id="v-name"></b></p>
+                <p>🏫 Kelas: <b id="v-class"></b></p>
+                <p>⭐ Skor Akhir: <b id="v-score"></b></p>
+                <p>❤️ Nyawa Berbaki: <b id="v-lives"></b></p>
+            </div>
+            <button class="btn btn-primary" onclick="resetToMenu()">MENU UTAMA</button>
+        </div>
+    </div>
+
+<script>
+    /* 1. DATA SOALAN */
+    const rawQuestions = [
+        { topic: "Kata Nama Am", q: "Ali membawa sebuah _______ ke sekolah.", a: "pensel", b: "Malaysia", c: "Ahmad" },
+        { topic: "Kata Nama Khas", q: "Apakah nama sekolah Amin?", a: "Sekolah Kebangsaan Guar Chempedak", b: "sekolah", c: "kelas" },
+        { topic: "Kata Ganti Nama Diri", q: "_______ sedang membaca buku di perpustakaan.", a: "Saya", b: "Meja", c: "Mereka-mereka" },
+        { topic: "Kata Kerja", q: "Ibu sedang _______ nasi di dapur.", a: "memasak", b: "cantik", c: "sekolah" },
+        { topic: "Kata Adjektif", q: "Bunga mawar itu sangat _______.", a: "cantik", b: "berlari", c: "meja" },
+        { topic: "Kata Sendi Nama", q: "Buku itu diletakkan _______ atas meja.", a: "di", b: "dan", c: "yang" },
+        { topic: "Kata Hubung", q: "Aina makan nasi _______ ayam.", a: "dan", b: "atau", c: "dengan" }, 
+        { topic: "Penjodoh Bilangan", q: "Ayah membeli se______ payung.", a: "kaki", b: "buah", c: "helai" }, 
+        { topic: "Kata Arah", q: "Bola itu berada di _______ kerusi.", a: "bawah", b: "cantik", c: "makan" },
+        { topic: "Kata Tanya", q: "_______ nama kamu?", a: "Apa", b: "Siapa", c: "Bila" }, // Maintained requirement
+        { topic: "Kata Seru", q: "_______, cantiknya pelangi itu!", a: "Wah", b: "Bila", c: "Mengapa" },
+        { topic: "Kata Perintah", q: "_______ susun buku itu dengan kemas.", a: "Tolong", b: "Siapa", c: "Mengapa" }, 
+        { topic: "Imbuhan", q: "Adik sedang _______ basikal.", a: "menunggang", b: "tunggang", c: "cantik" },
+        { topic: "Tanda Baca", q: "Pilih ayat yang menggunakan tanda baca dengan betul.", a: "Siapa nama kamu?", b: "Siapa nama kamu.", c: "Siapa nama kamu!" },
+        { topic: "Pola Ayat", q: "Pilih ayat yang betul.", a: "Kucing itu comel.", b: "Comel itu kucing.", c: "Itu kucing comel sangat makan." },
+        { topic: "Kata Kerja", q: "Murid-murid _______ di padang setiap petang.", a: "bermain", b: "tinggi", c: "sekolah" },
+        { topic: "Kata Adjektif", q: "Air sungai itu sangat _______.", a: "jernih", b: "berlari", c: "menyapu" },
+        { topic: "Kata Hubung", q: "Saya suka membaca _______ melukis.", a: "dan", b: "atau", c: "di" },
+        { topic: "Kata Sendi Nama", q: "Kami pulang _______ sekolah pada pukul 1.00 petang.", a: "dari", b: "ke", c: "pada" },
+        { topic: "Penjodoh Bilangan", q: "Ibu membeli se______ pisang.", a: "sikat", b: "batang", c: "helai" }
+    ];
+    let gameQuestions = [];
+
+    /* 2. AUDIO & STATE */
+    let gameState = { name: "", cls: "", score: 0, lives: 5, qIndex: 0, diff: "mudah", isOver: false };
+    let audioEnabled = true;
+    let timerInterval; let timeLeft = 0;
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playTone(freq, type, duration, vol=0.1) {
+        if (!audioEnabled || audioCtx.state === 'suspended') return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + duration);
+    }
+    const SFX = {
+        click: () => playTone(600, 'sine', 0.1),
+        correct: () => { playTone(523, 'sine', 0.1); setTimeout(()=>playTone(659, 'sine', 0.15), 100); setTimeout(()=>playTone(783, 'sine', 0.3), 200); },
+        wrong: () => { playTone(200, 'sawtooth', 0.3, 0.2); setTimeout(()=>playTone(150, 'sawtooth', 0.4, 0.2), 200); },
+        splash: () => playTone(100, 'square', 0.5, 0.2),
+        win: () => { [523, 659, 783, 1046, 1318].forEach((f, i) => setTimeout(() => playTone(f, 'sine', 0.3), i * 150)); }
+    };
+    function toggleSound() {
+        audioEnabled = !audioEnabled; document.getElementById('btn-sound').innerText = audioEnabled ? "🔊 Audio" : "🔈 Bisu";
+        if(audioEnabled && audioCtx.state === 'suspended') audioCtx.resume(); SFX.click();
+    }
+
+    /* 3. GAME LOGIC */
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        if(id) document.getElementById(id).classList.add('active');
+    }
+    function initQuestions() {
+        let shuffled = [...rawQuestions].sort(() => Math.random() - 0.5);
+        gameQuestions = shuffled.map(q => {
+            let opts = [{t: q.a, v: true}, {t: q.b, v: false}, {t: q.c, v: false}].sort(() => Math.random() - 0.5);
+            return { ...q, options: opts };
+        });
+    }
+    function startGame() {
+        if(audioCtx.state === 'suspended' && audioEnabled) audio
